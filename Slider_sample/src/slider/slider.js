@@ -628,16 +628,12 @@ define(["require", "exports", "@syncfusion/ej2-base", "@syncfusion/ej2-base", "@
             }
         };
         Slider.prototype.handleFocus = function (e) {
-            this.focusSliderElement();
-            this.sliderBarClick(e);
             if (e.currentTarget === this.firstHandle) {
                 this.firstHandle.classList.add(classNames.sliderHandleFocused);
             }
             else {
                 this.secondHandle.classList.add(classNames.sliderHandleFocused);
             }
-            ej2_base_1.EventHandler.add(document, 'mousemove touchmove', this.sliderBarMove, this);
-            ej2_base_1.EventHandler.add(document, 'mouseup touchend', this.sliderBarUp, this);
         };
         Slider.prototype.handleOver = function (e) {
             if (this.tooltip.isVisible && this.tooltip.showOn === 'Hover') {
@@ -824,18 +820,13 @@ define(["require", "exports", "@syncfusion/ej2-base", "@syncfusion/ej2-base", "@
                 }
             }
         };
-        Slider.prototype.materialTooltipEventCallBack = function (event) {
-            this.sliderBarClick(event);
-            ej2_base_1.EventHandler.add(document, 'mousemove touchmove', this.sliderBarMove, this);
-            ej2_base_1.EventHandler.add(document, 'mouseup touchend', this.sliderBarUp, this);
-        };
         Slider.prototype.wireMaterialTooltipEvent = function (destroy) {
             if (this.isMaterialTooltip) {
                 if (!destroy) {
-                    ej2_base_1.EventHandler.add(this.tooltipElement, 'mousedown touchstart', this.materialTooltipEventCallBack, this);
+                    ej2_base_1.EventHandler.add(this.tooltipElement, 'mousedown touchstart', this.sliderDown, this);
                 }
                 else {
-                    ej2_base_1.EventHandler.remove(this.tooltipElement, 'mousedown touchstart', this.materialTooltipEventCallBack);
+                    ej2_base_1.EventHandler.remove(this.tooltipElement, 'mousedown touchstart', this.sliderDown);
                 }
             }
         };
@@ -879,7 +870,9 @@ define(["require", "exports", "@syncfusion/ej2-base", "@syncfusion/ej2-base", "@
                 tooltipContentElement.classList.remove(classNames.materialTooltipHide);
                 tooltipContentElement.classList.add(classNames.materialTooltipShow);
                 this.firstHandle.style.cursor = 'default';
-                this.tooltipElement.style.transition = this.scaleTransform;
+                if (tooltipContentElement.innerText !== '') {
+                    this.tooltipElement.style.transition = this.scaleTransform;
+                }
                 this.tooltipElement.classList.add(classNames.materialTooltipOpen);
                 this.materialHandle.style.transform = 'scale(0)';
                 if (tooltipContentElement.innerText.length > 4) {
@@ -2091,10 +2084,10 @@ define(["require", "exports", "@syncfusion/ej2-base", "@syncfusion/ej2-base", "@
         Slider.prototype.sliderBarClick = function (evt) {
             evt.preventDefault();
             var pos;
-            if (evt.type === 'mousedown' || evt.type === 'mouseup' || evt.type === 'click') {
+            if (evt.type === 'mousedown' || evt.type === 'click') {
                 pos = { x: evt.clientX, y: evt.clientY };
             }
-            else if (evt.type === 'touchend' || evt.type === 'touchstart') {
+            else if (evt.type === 'touchstart') {
                 pos = { x: evt.changedTouches[0].clientX, y: evt.changedTouches[0].clientY };
             }
             var handlepos = this.xyToPosition(pos);
@@ -2159,6 +2152,42 @@ define(["require", "exports", "@syncfusion/ej2-base", "@syncfusion/ej2-base", "@
                 this.setRangeBar();
             }
         };
+        Slider.prototype.sliderDown = function (event) {
+            var _a, _b;
+            event.preventDefault();
+            this.focusSliderElement();
+            if (this.type === 'Range' && this.drag && event.target === this.rangeBar) {
+                var xPostion = void 0;
+                var yPostion = void 0;
+                if (event.type === 'mousedown') {
+                    _a = [event.clientX, event.clientY], xPostion = _a[0], yPostion = _a[1];
+                }
+                else if (event.type === 'touchstart') {
+                    _b = [event.changedTouches[0].clientX, event.changedTouches[0].clientY], xPostion = _b[0], yPostion = _b[1];
+                }
+                if (this.orientation === 'Horizontal') {
+                    this.firstPartRemain = xPostion - this.rangeBar.getBoundingClientRect().left;
+                    this.secondPartRemain = this.rangeBar.getBoundingClientRect().right - xPostion;
+                }
+                else {
+                    this.firstPartRemain = yPostion - this.rangeBar.getBoundingClientRect().top;
+                    this.secondPartRemain = this.rangeBar.getBoundingClientRect().bottom - yPostion;
+                }
+                this.minDiff = this.handleVal2 - this.handleVal1;
+                this.tooltipToggle(this.rangeBar);
+                var focusedElement = this.element.querySelector('.' + classNames.sliderTabHandle);
+                if (focusedElement) {
+                    focusedElement.classList.remove(classNames.sliderTabHandle);
+                }
+                ej2_base_1.EventHandler.add(document, 'mousemove touchmove', this.dragRangeBarMove, this);
+                ej2_base_1.EventHandler.add(document, 'mouseup touchend', this.dragRangeBarUp, this);
+            }
+            else {
+                this.sliderBarClick(event);
+                ej2_base_1.EventHandler.add(document, 'mousemove touchmove', this.sliderBarMove, this);
+                ej2_base_1.EventHandler.add(document, 'mouseup touchend', this.sliderBarUp, this);
+            }
+        };
         Slider.prototype.handleValueAdjust = function (handleValue, assignValue, handleNumber) {
             if (handleNumber === 1) {
                 this.handleVal1 = assignValue;
@@ -2176,7 +2205,6 @@ define(["require", "exports", "@syncfusion/ej2-base", "@syncfusion/ej2-base", "@
             if (event.type !== 'touchmove') {
                 event.preventDefault();
             }
-            this.rangeBarDragged = true;
             var pos;
             this.rangeBar.style.transition = 'none';
             this.firstHandle.style.transition = 'none';
@@ -2341,15 +2369,10 @@ define(["require", "exports", "@syncfusion/ej2-base", "@syncfusion/ej2-base", "@
             }
         };
         Slider.prototype.dragRangeBarUp = function (event) {
-            if (!this.rangeBarDragged) {
-                this.focusSliderElement();
-                this.sliderBarClick(event);
-            }
             this.changeEvent('changed', event);
             this.closeTooltip();
             ej2_base_1.EventHandler.remove(document, 'mousemove touchmove', this.dragRangeBarMove);
             ej2_base_1.EventHandler.remove(document, 'mouseup touchend', this.dragRangeBarUp);
-            this.rangeBarDragged = false;
         };
         Slider.prototype.checkRepeatedValue = function (currentValue) {
             if (this.type === 'Range') {
@@ -2427,50 +2450,11 @@ define(["require", "exports", "@syncfusion/ej2-base", "@syncfusion/ej2-base", "@
                 ej2_base_1.EventHandler.remove(this.secondBtn, 'focusout', this.sliderFocusOut);
             }
         };
-        Slider.prototype.rangeBarMousedown = function (event) {
-            var _a, _b;
-            event.preventDefault();
-            this.focusSliderElement();
-            if (this.type === 'Range' && this.drag && event.target === this.rangeBar) {
-                var xPostion = void 0;
-                var yPostion = void 0;
-                if (event.type === 'mousedown') {
-                    _a = [event.clientX, event.clientY], xPostion = _a[0], yPostion = _a[1];
-                }
-                else if (event.type === 'touchstart') {
-                    _b = [event.changedTouches[0].clientX, event.changedTouches[0].clientY], xPostion = _b[0], yPostion = _b[1];
-                }
-                if (this.orientation === 'Horizontal') {
-                    this.firstPartRemain = xPostion - this.rangeBar.getBoundingClientRect().left;
-                    this.secondPartRemain = this.rangeBar.getBoundingClientRect().right - xPostion;
-                }
-                else {
-                    this.firstPartRemain = yPostion - this.rangeBar.getBoundingClientRect().top;
-                    this.secondPartRemain = this.rangeBar.getBoundingClientRect().bottom - yPostion;
-                }
-                this.minDiff = this.handleVal2 - this.handleVal1;
-                this.tooltipToggle(this.rangeBar);
-                var focusedElement = this.element.querySelector('.' + classNames.sliderTabHandle);
-                if (focusedElement) {
-                    focusedElement.classList.remove(classNames.sliderTabHandle);
-                }
-                ej2_base_1.EventHandler.add(document, 'mousemove touchmove', this.dragRangeBarMove, this);
-                ej2_base_1.EventHandler.add(document, 'mouseup touchend', this.dragRangeBarUp, this);
-            }
-        };
-        Slider.prototype.elementClick = function (event) {
-            event.preventDefault();
-            this.focusSliderElement();
-            this.sliderBarClick(event);
-        };
         Slider.prototype.wireEvents = function () {
             this.onresize = this.reposition.bind(this);
             window.addEventListener('resize', this.onresize);
             if (this.enabled && !this.readonly) {
-                ej2_base_1.EventHandler.add(this.element, 'click', this.elementClick, this);
-                if (this.type === "Range" && this.drag) {
-                    ej2_base_1.EventHandler.add(this.rangeBar, 'mousedown touchstart', this.rangeBarMousedown, this);
-                }
+                ej2_base_1.EventHandler.add(this.element, 'mousedown touchstart', this.sliderDown, this);
                 ej2_base_1.EventHandler.add(this.sliderContainer, 'keydown', this.keyDown, this);
                 ej2_base_1.EventHandler.add(this.sliderContainer, 'keyup', this.keyUp, this);
                 ej2_base_1.EventHandler.add(this.element, 'focusout', this.sliderFocusOut, this);
@@ -2489,10 +2473,7 @@ define(["require", "exports", "@syncfusion/ej2-base", "@syncfusion/ej2-base", "@
             }
         };
         Slider.prototype.unwireEvents = function () {
-            ej2_base_1.EventHandler.remove(this.element, 'click', this.elementClick);
-            if (this.type === "Range" && this.drag) {
-                ej2_base_1.EventHandler.remove(this.rangeBar, 'mousedown touchstart', this.rangeBarMousedown);
-            }
+            ej2_base_1.EventHandler.remove(this.element, 'mousedown touchstart', this.sliderDown);
             ej2_base_1.EventHandler.remove(this.sliderContainer, 'keydown', this.keyDown);
             ej2_base_1.EventHandler.remove(this.sliderContainer, 'keyup', this.keyUp);
             ej2_base_1.EventHandler.remove(this.element, 'focusout', this.sliderFocusOut);
